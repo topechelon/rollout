@@ -182,7 +182,11 @@ class Rollout
   end
 
   def get(feature)
-    string = @storage.get(key(feature))
+    if @storage.class.name == 'ActiveSupport::Cache::FileStore'
+      string = @storage.fetch(key(feature))
+    else
+      string = @storage.get(key(feature))
+    end
     if string || !migrate?
       Feature.new(feature, string, @options)
     else
@@ -198,13 +202,21 @@ class Rollout
   end
 
   def features
-    (@storage.get(features_key) || "").split(",").map(&:to_sym)
+    if @storage.class.name == 'ActiveSupport::Cache::FileStore'
+      (@storage.fetch(features_key) || "").split(",").map(&:to_sym)
+    else
+      (@storage.get(features_key) || "").split(",").map(&:to_sym)
+    end
   end
 
   def clear!
     features.each do |feature|
       with_feature(feature) { |f| f.clear }
-      @storage.del(key(feature))
+      if @storage.class.name == 'ActiveSupport::Cache::FileStore'
+        @storage.delete(key(feature))
+      else
+        @storage.del(key(feature))
+      end
     end
 
     @storage.del(features_key)
@@ -226,8 +238,13 @@ class Rollout
     end
 
     def save(feature)
-      @storage.set(key(feature.name), feature.serialize)
-      @storage.set(features_key, (features | [feature.name.to_sym]).join(","))
+      if @storage.class.name == 'ActiveSupport::Cache::FileStore'
+        @storage.write(key(feature.name), feature.serialize)
+        @storage.write(features_key, (features | [feature.name.to_sym]).join(","))
+      else
+        @storage.set(key(feature.name), feature.serialize)
+        @storage.set(features_key, (features | [feature.name.to_sym]).join(","))
+      end
     end
 
     def migrate?
