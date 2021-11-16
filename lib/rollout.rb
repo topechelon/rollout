@@ -186,6 +186,7 @@ class Rollout
       string = @storage.fetch(key(feature))
     else
       string = @storage.get(key(feature))
+      string = Marshal.load(string) rescue string
     end
     if string || !migrate?
       Feature.new(feature, string, @options)
@@ -205,7 +206,9 @@ class Rollout
     if @storage.class.name.include? 'ActiveSupport::Cache'
       (@storage.fetch(features_key) || "").split(",").map(&:to_sym)
     else
-      (@storage.get(features_key) || "").split(",").map(&:to_sym)
+      existing = @storage.get(features_key)
+      existing = Marshal.load(existing) rescue existing
+      (existing || "").split(",").map(&:to_sym)
     end
   end
 
