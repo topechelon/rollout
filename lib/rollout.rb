@@ -67,7 +67,7 @@ class Rollout
 
     private
       def user_id(user)
-        if user.is_a?(Fixnum) ||
+        if user.is_a?(Integer) ||
              user.is_a?(String)
           user.to_s
         else
